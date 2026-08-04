@@ -48,6 +48,10 @@ logging:
     br.com.fiap: INFO
     org.springframework: WARN
 
+auth:
+  lambda:
+    url: ${AUTH_LAMBDA_URL:}
+
 ---
 spring:
   config:
