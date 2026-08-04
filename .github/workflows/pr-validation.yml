@@ -1,0 +1,85 @@
+name: Validar Pull Request - Video Processing MS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  JAVA_VERSION: '21'
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Instalar ffmpeg
+        run: sudo apt-get install -y ffmpeg
+
+      - name: Permitir execução Maven Wrapper
+        run: chmod +x ./mvnw
+
+      - name: Compilar aplicação
+        run: ./mvnw -B -ntp clean test-compile
+
+      - name: Executar testes e cobertura
+        run: ./mvnw -B -ntp verify
+        continue-on-error: true
+        env:
+          SPRING_PROFILES_ACTIVE: test
+
+      - name: Listar arquivos de teste
+        if: always()
+        run: find . -name "TEST-*.xml"
+
+      - name: Publicar relatório de testes
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Test Report
+          path: "**/target/surefire-reports/TEST-*.xml"
+          reporter: java-junit
+          fail-on-error: true
+
+      - name: Publicar cobertura JaCoCo
+        uses: madrapps/jacoco-report@v1.7.1
+        if: always()
+        with:
+          paths: |
+            ${{ github.workspace }}/report-aggregate/target/site/jacoco-aggregate/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 80
+          min-coverage-changed-files: 80
+          title: "📊 Cobertura de Testes"
+          update-comment: true
+          pass-emoji: "✅"
+          fail-emoji: "❌"
+
+      - name: Upload relatórios
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports
+          path: |
+            **/target/site/jacoco/
+            **/target/site/jacoco-aggregate/
+            **/target/cucumber-reports/
+            **/target/surefire-reports/
+            **/target/failsafe-reports/

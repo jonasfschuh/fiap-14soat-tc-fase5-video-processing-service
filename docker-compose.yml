@@ -1,0 +1,47 @@
+version: '3.8'
+name: ms-video-processing
+services:
+  video-processing-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-processing-api
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8084
+      STORAGE_TYPE: local
+      STORAGE_LOCAL_PATH: /app/storage
+      STORAGE_OUTPUT_PATH: /app/outputs
+      AWS_SQS_ENABLED: "true"
+      AWS_ENDPOINT_OVERRIDE: http://fiap-localstack:4566
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      SQS_QUEUE_VIDEO_UPLOADED: http://localhost:4566/000000000000/video-uploaded
+      SQS_QUEUE_VIDEO_EVENTS: http://localhost:4566/000000000000/video-events
+      S3_BUCKET: fiap-video-uploads
+      FFMPEG_TIMEOUT_MINUTES: 10
+      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
+      NEW_RELIC_APP_NAME: video-processing-ms-local
+    ports:
+      - "8084:8084"
+    volumes:
+      - video-uploads:/app/storage
+      - processing-outputs:/app/outputs
+    networks:
+      - app-network
+      - fiap-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+  fiap-network:
+    external: true
+    name: fiap-network
+
+volumes:
+  video-uploads:
+    external: true
+    name: ms-video-upload_video-uploads
+  processing-outputs:

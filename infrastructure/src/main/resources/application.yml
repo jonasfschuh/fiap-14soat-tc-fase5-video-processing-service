@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: video-processing-service
+
+server:
+  port: ${SERVER_PORT:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+
+app:
+  storage:
+    type: ${STORAGE_TYPE:local}
+    local:
+      path: ${STORAGE_LOCAL_PATH:./storage}
+      output-path: ${STORAGE_OUTPUT_PATH:./outputs}
+    s3:
+      bucket: ${S3_BUCKET:fiap-video-uploads}
+  processing:
+    ffmpeg:
+      timeout-minutes: ${FFMPEG_TIMEOUT_MINUTES:10}
+    jobs:
+      max-history: ${JOBS_MAX_HISTORY:100}
+
+aws:
+  region: ${AWS_REGION:us-east-1}
+  access-key-id: ${AWS_ACCESS_KEY_ID:test}
+  secret-access-key: ${AWS_SECRET_ACCESS_KEY:test}
+  endpoint-override: ${AWS_ENDPOINT_OVERRIDE:}
+  sqs:
+    enabled: ${AWS_SQS_ENABLED:false}
+    polling:
+      fixed-delay-ms: ${AWS_SQS_POLLING_DELAY_MS:3000}
+    queues:
+      video-uploaded: ${SQS_QUEUE_VIDEO_UPLOADED:http://localhost:4566/000000000000/video-uploaded}
+      video-events: ${SQS_QUEUE_VIDEO_EVENTS:http://localhost:4566/000000000000/video-events}
+
+logging:
+  level:
+    br.com.fiap: INFO
+    org.springframework: WARN
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+aws:
+  sqs:
+    enabled: false
+
+app:
+  storage:
+    type: local
+    local:
+      path: ./target/test-storage
+      output-path: ./target/test-outputs
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+aws:
+  sqs:
+    enabled: ${AWS_SQS_ENABLED:true}
+  endpoint-override: ${AWS_ENDPOINT_OVERRIDE:http://fiap-localstack:4566}
