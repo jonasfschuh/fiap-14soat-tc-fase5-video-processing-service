@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <springProperty scope="context" name="appName"
+                    source="spring.application.name"
+                    defaultValue="video-processing-service"/>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         APPENDER: texto legível para desenvolvimento local
+         ══════════════════════════════════════════════════════════════════ -->
+    <appender name="CONSOLE_TEXT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p --- [%15.15t] %-40.40logger{39} : %m%n%xEx</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         APPENDER: JSON estruturado para New Relic (docker / production)
+         Todos os campos MDC são automaticamente incluídos como atributos
+         pesquisáveis no New Relic Logs.
+         ══════════════════════════════════════════════════════════════════ -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- Campos fixos de contexto -->
+            <customFields>{"app":"${appName}"}</customFields>
+            <!-- Inclui todos os campos MDC como atributos de primeiro nível -->
+            <includeMdc>true</includeMdc>
+            <!-- Campos de stack trace resumidos para economizar espaço no log -->
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerCause>20</maxDepthPerCause>
+                <shortenedClassNameLength>30</shortenedClassNameLength>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
+        </encoder>
+    </appender>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         PERFIS
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- docker / production → JSON para New Relic -->
+    <springProfile name="docker,production">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </root>
+        <logger name="br.com.fiap" level="INFO"/>
+        <logger name="org.springframework.amqp" level="WARN"/>
+        <logger name="org.springframework.web" level="WARN"/>
+        <logger name="com.rabbitmq" level="WARN"/>
+    </springProfile>
+
+    <!-- demais perfis (local, test) → texto legível -->
+    <springProfile name="!docker,!production">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_TEXT"/>
+        </root>
+        <logger name="br.com.fiap" level="DEBUG"/>
+        <logger name="org.springframework.amqp" level="WARN"/>
+        <logger name="org.springframework.web" level="WARN"/>
+        <logger name="com.rabbitmq" level="WARN"/>
+    </springProfile>
+
+</configuration>

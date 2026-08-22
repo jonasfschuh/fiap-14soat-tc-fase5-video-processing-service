@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-processing-api
+  namespace: fiapx
+  labels:
+    app: video-processing-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: video-processing-api
+  template:
+    metadata:
+      labels:
+        app: video-processing-api
+    spec:
+      containers:
+        - name: video-processing-api
+          image: video-processing-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8086
+          env:
+            - name: SERVER_PORT
+              value: "8086"
+            - name: STORAGE_TYPE
+              value: local
+            - name: STORAGE_LOCAL_PATH
+              value: /app/videos/uploads
+            - name: STORAGE_OUTPUT_PATH
+              value: /app/videos/processed
+            - name: AUTH_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: AUTH_SERVICE_URL
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_HOST
+            - name: RABBITMQ_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_PORT
+            - name: RABBITMQ_VHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_VHOST
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: RABBITMQ_PASSWORD
+          volumeMounts:
+            - name: video-storage
+              mountPath: /app/videos
+      volumes:
+        - name: video-storage
+          persistentVolumeClaim:
+            claimName: fiapx-video-pvc

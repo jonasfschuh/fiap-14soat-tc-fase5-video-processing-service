@@ -1,0 +1,156 @@
+﻿name: Build, Test & Deploy - Video Processing Service
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  APP_NAME: video-processing-api # Nome logico usado nas labels e diagnosticos.
+  K8S_DEPLOYMENT: video-processing-api # Mesmo nome do metadata.name do Deployment.
+  K8S_NAMESPACE: fiapx
+  IMAGE_NAME: video-processing-api # Imagem local construida no Docker Desktop.
+
+jobs:
+  build-and-test:
+    name: 1. Build e Testes
+    runs-on: ubuntu-latest
+    outputs:
+      tests_total: ${{ steps.metrics.outputs.tests_total }}
+      tests_success: ${{ steps.metrics.outputs.tests_success }}
+      tests_failures: ${{ steps.metrics.outputs.tests_failures }}
+      coverage_pct: ${{ steps.metrics.outputs.coverage_pct }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Instalar FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Garantir permissao do Maven Wrapper
+        run: chmod +x ./mvnw
+
+      - name: Build e Testes
+        run: ./mvnw -B -ntp clean verify
+        env:
+          SPRING_PROFILES_ACTIVE: test
+
+      - name: Coletar metricas de qualidade
+        id: metrics
+        run: |
+          python3 - <<'PY'
+          import glob, os, xml.etree.ElementTree as ET
+          test_files = glob.glob('**/target/surefire-reports/*.xml', recursive=True)
+          total = failures = skipped = 0
+          for f in test_files:
+              try:
+                  root = ET.parse(f).getroot()
+                  items = [root] if root.tag == 'testsuite' else root.findall('testsuite')
+                  for s in items:
+                      total += int(s.attrib.get('tests',0) or 0)
+                      failures += int(s.attrib.get('failures',0) or 0) + int(s.attrib.get('errors',0) or 0)
+                      skipped += int(s.attrib.get('skipped',0) or 0)
+              except: pass
+          for f in glob.glob('**/target/cucumber-reports/cucumber.xml', recursive=True):
+              try:
+                  root = ET.parse(f).getroot()
+                  total += int(root.attrib.get('tests',0) or 0)
+                  failures += int(root.attrib.get('failures',0) or 0)
+              except: pass
+          success = max(total - failures - skipped, 0)
+          covered = missed = 0
+          for f in glob.glob('**/target/site/jacoco/jacoco.xml', recursive=True):
+              try:
+                  root = ET.parse(f).getroot()
+                  for c in root.findall(".//counter[@type='LINE']"):
+                      covered += int(c.attrib.get('covered',0) or 0)
+                      missed += int(c.attrib.get('missed',0) or 0)
+              except: pass
+          coverage = (covered/(covered+missed)*100) if covered+missed>0 else 0.0
+          with open(os.environ['GITHUB_OUTPUT'],'a') as fh:
+              fh.write(f"tests_total={total}\ntests_success={success}\ntests_failures={failures}\ncoverage_pct={coverage:.2f}\n")
+          print(f"Tests: {total} total, {success} ok, {failures} fail | Coverage: {coverage:.2f}%")
+          PY
+
+      - name: Upload artefatos de cobertura
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-reports
+          path: |
+            **/target/site/jacoco/
+            **/target/cucumber-reports/
+
+  deploy:
+    name: 2. Build Docker & Deploy K8s Local
+    runs-on: self-hosted
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
+
+      - name: Garantir namespace fiapx
+        run: kubectl get namespace ${{ env.K8S_NAMESPACE }} >/dev/null 2>&1 || kubectl create namespace ${{ env.K8S_NAMESPACE }}
+
+      - name: Deploy no Kubernetes (Docker Desktop)
+        run: kubectl apply -f k8s/ -n ${{ env.K8S_NAMESPACE }}
+
+      - name: Aguardar rollout
+        run: kubectl rollout restart deployment/${{ env.K8S_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }} && kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }} --timeout=180s
+
+      - name: Diagnostico em caso de falha
+        if: failure()
+        run: |
+          kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=${{ env.APP_NAME }} || true
+          kubectl describe pods -n ${{ env.K8S_NAMESPACE }} -l app=${{ env.APP_NAME }} || true
+          for pod in $(kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=${{ env.APP_NAME }} -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+            echo "===== Logs: $pod =====" && kubectl logs "$pod" -n ${{ env.K8S_NAMESPACE }} --tail=100 || true
+          done
+
+  summary:
+    name: 3. Sumario
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [build-and-test, deploy]
+    steps:
+      - name: Publicar resumo
+        env:
+          BUILD_RESULT: ${{ needs.build-and-test.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          TESTS_TOTAL: ${{ needs.build-and-test.outputs.tests_total }}
+          TESTS_SUCCESS: ${{ needs.build-and-test.outputs.tests_success }}
+          TESTS_FAILURES: ${{ needs.build-and-test.outputs.tests_failures }}
+          COVERAGE_PCT: ${{ needs.build-and-test.outputs.coverage_pct }}
+        run: |
+          {
+            echo "## Deploy - Video Processing Service"
+            echo "| Etapa | Resultado |"
+            echo "|---|---|"
+            echo "| Build & Testes | ${BUILD_RESULT} |"
+            echo "| Deploy K8s Local | ${DEPLOY_RESULT} |"
+            echo ""
+            echo "### Qualidade"
+            echo "- Testes: ${TESTS_TOTAL:-n/a} total, ${TESTS_SUCCESS:-n/a} ok, ${TESTS_FAILURES:-n/a} falhas"
+            echo "- Cobertura (LINE): ${COVERAGE_PCT:-n/a}%"
+            echo ""
+            echo "### Acesso local"
+            echo "- Swagger: http://localhost/processing/swagger-ui.html"
+            echo "- Health: http://localhost/processing/actuator/health"
+          } >> "$GITHUB_STEP_SUMMARY"
+
