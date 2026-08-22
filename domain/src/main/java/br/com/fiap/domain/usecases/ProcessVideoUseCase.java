@@ -95,6 +95,10 @@ public class ProcessVideoUseCase implements ProcessVideoInputPort {
                     .outputKey(storedKey)
                     .frameCount(frameCount)
                     .status(VideoJobStatus.DONE)
+                    .originalFilename(filename)
+                    .fileSizeBytes(event.fileSizeBytes())
+                    .mimeType(event.mimeType())
+                    .storageKey(event.storageKey())
                     .build();
             eventPublisher.publishProcessed(result);
 

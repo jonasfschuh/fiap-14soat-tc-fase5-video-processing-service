@@ -12,6 +12,10 @@ public class VideoJobResult {
     private final VideoJobStatus status;
     private final String errorMessage;
     private final LocalDateTime processedAt;
+    private final String originalFilename;
+    private final Long fileSizeBytes;
+    private final String mimeType;
+    private final String storageKey;
 
     private VideoJobResult(Builder builder) {
         this.videoId = builder.videoId;
@@ -21,6 +25,10 @@ public class VideoJobResult {
         this.status = builder.status;
         this.errorMessage = builder.errorMessage;
         this.processedAt = builder.processedAt != null ? builder.processedAt : LocalDateTime.now();
+        this.originalFilename = builder.originalFilename;
+        this.fileSizeBytes = builder.fileSizeBytes;
+        this.mimeType = builder.mimeType;
+        this.storageKey = builder.storageKey;
     }
 
     public static Builder builder(UUID videoId, String userId) {
@@ -55,6 +63,22 @@ public class VideoJobResult {
         return processedAt;
     }
 
+    public String getOriginalFilename() {
+        return originalFilename;
+    }
+
+    public Long getFileSizeBytes() {
+        return fileSizeBytes;
+    }
+
+    public String getMimeType() {
+        return mimeType;
+    }
+
+    public String getStorageKey() {
+        return storageKey;
+    }
+
     public static class Builder {
         private final UUID videoId;
         private final String userId;
@@ -63,6 +87,10 @@ public class VideoJobResult {
         private VideoJobStatus status = VideoJobStatus.PROCESSING;
         private String errorMessage;
         private LocalDateTime processedAt;
+        private String originalFilename;
+        private Long fileSizeBytes;
+        private String mimeType;
+        private String storageKey;
 
         public Builder(UUID videoId, String userId) {
             this.videoId = videoId;
@@ -91,6 +119,26 @@ public class VideoJobResult {
 
         public Builder processedAt(LocalDateTime processedAt) {
             this.processedAt = processedAt;
+            return this;
+        }
+
+        public Builder originalFilename(String originalFilename) {
+            this.originalFilename = originalFilename;
+            return this;
+        }
+
+        public Builder fileSizeBytes(Long fileSizeBytes) {
+            this.fileSizeBytes = fileSizeBytes;
+            return this;
+        }
+
+        public Builder mimeType(String mimeType) {
+            this.mimeType = mimeType;
+            return this;
+        }
+
+        public Builder storageKey(String storageKey) {
+            this.storageKey = storageKey;
             return this;
         }
 

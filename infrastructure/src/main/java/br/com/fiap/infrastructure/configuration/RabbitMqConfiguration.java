@@ -9,6 +9,7 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -84,8 +85,11 @@ public class RabbitMqConfiguration {
 
     @Bean
     public VideoProcessingEventPublisherPort videoProcessingEventPublisherPort(
-            RabbitTemplate rabbitTemplate, ObjectMapper objectMapper) {
-        return new RabbitVideoProcessingEventPublisherAdapter(rabbitTemplate, objectMapper);
+            RabbitTemplate rabbitTemplate,
+            ObjectMapper objectMapper,
+            @Value("${app.storage.local.output-path:/app/videos/processed}") String outputBasePath,
+            @Value("${app.storage.local.path:/app/videos/uploads}") String inputBasePath) {
+        return new RabbitVideoProcessingEventPublisherAdapter(rabbitTemplate, objectMapper, outputBasePath, inputBasePath);
     }
 }
 
