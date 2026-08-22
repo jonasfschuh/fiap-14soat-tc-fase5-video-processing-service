@@ -4,32 +4,29 @@ echo  Iniciando Ambiente de Desenvolvimento
 echo  Microservico: ms-video-processing
 echo ============================================
 echo.
-echo  ATENCAO: Este servico NAO possui banco de dados.
-echo  O LocalStack e gerenciado pelo repositorio:
-echo    fiap-14soat-tc-fase5-video-upload-service
-echo  Certifique-se de que ele esteja rodando antes:
-echo    cd ..\fiap-14soat-tc-fase5-video-upload-service
-echo    docker-compose up -d localstack stackport
+echo  PRE-REQUISITO: infraestrutura do iac-terraform rodando.
+echo  Este servico NAO possui banco de dados.
+echo  Os recursos abaixo sao provisionados pelo repositorio:
+echo    fiap-14soat-tc-fase5-iac-terraform
 echo.
-echo  Criando rede compartilhada (se nao existir)...
-docker network create fiap-network 2>nul
+echo   Recursos compartilhados (iac-terraform):
+echo    - RabbitMQ:   localhost:5672   (vhost: fiapx / user: fiapx / pass: fiapx123)
+echo    - RabbitMQ UI: http://localhost:15672
 echo.
-
 echo  Execute a aplicacao no IntelliJ com as seguintes variaveis de ambiente:
 echo    SPRING_PROFILES_ACTIVE=docker
-echo    SERVER_PORT=8084
+echo    SERVER_PORT=8086
 echo    STORAGE_TYPE=local
-echo    STORAGE_LOCAL_PATH=./storage
-echo    STORAGE_OUTPUT_PATH=./outputs
-echo    AWS_SQS_ENABLED=true
-echo    AWS_ENDPOINT_OVERRIDE=http://localhost:4566
-echo    AWS_REGION=us-east-1
-echo    AWS_ACCESS_KEY_ID=test
-echo    AWS_SECRET_ACCESS_KEY=test
-echo    SQS_QUEUE_VIDEO_UPLOADED=http://localhost:4566/000000000000/video-uploaded
-echo    SQS_QUEUE_VIDEO_EVENTS=http://localhost:4566/000000000000/video-events
+echo    STORAGE_LOCAL_PATH=/app/videos/uploads
+echo    STORAGE_OUTPUT_PATH=/app/videos/processed
+echo    RABBITMQ_HOST=localhost
+echo    RABBITMQ_PORT=5672
+echo    RABBITMQ_VHOST=fiapx
+echo    RABBITMQ_USER=fiapx
+echo    RABBITMQ_PASSWORD=fiapx123
+echo    AUTH_SERVICE_URL=http://localhost:8090
 echo.
-echo  Porta local da API: 8084
-echo  http://localhost:8084/swagger-ui.html
-echo  http://localhost:8084/api/jobs  (historico de jobs in-memory)
+echo  Porta local da API: 8086
+echo  http://localhost:8086/swagger-ui.html
+echo  http://localhost:8086/api/jobs  (historico de jobs in-memory)
 echo.

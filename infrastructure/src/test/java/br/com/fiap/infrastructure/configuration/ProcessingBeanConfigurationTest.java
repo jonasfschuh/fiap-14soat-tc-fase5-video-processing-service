@@ -42,11 +42,5 @@ class ProcessingBeanConfigurationTest {
         var port = config.processVideoInputPort(downloadPort, ffmpegPort, zipStoragePort, eventPublisher);
         assertThat(port).isNotNull();
     }
-
-    @Test
-    void shouldCreateNoOpPublisher() {
-        ProcessingBeanConfiguration config = new ProcessingBeanConfiguration();
-        VideoProcessingEventPublisherPort port = config.noOpVideoProcessingEventPublisherPort();
-        assertThat(port).isNotNull();
-    }
 }
+

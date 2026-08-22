@@ -100,7 +100,7 @@
                                     </rules>
                                     <excludes>
                                         <exclude>**/VideoProcessingApplication.class</exclude>
-                                        <exclude>**/AwsConfiguration.class</exclude>
+                                        <exclude>**/RabbitMqConfiguration.class</exclude>
                                         <exclude>**/SwaggerConfiguration.class</exclude>
                                         <exclude>**/VideoStorageBeanConfiguration.class</exclude>
                                         <exclude>**/SchedulingConfiguration.class</exclude>
@@ -131,3 +131,4 @@
         </profile>
     </profiles>
 </project>
+

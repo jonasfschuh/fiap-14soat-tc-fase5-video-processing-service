@@ -25,8 +25,8 @@ public class AuthProxyController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthProxyController.class);
 
-    @Value("${auth.lambda.url:}")
-    private String authLambdaUrl;
+    @Value("${auth.service.url:}")
+    private String authServiceUrl;
 
     private final RestTemplate restTemplate;
 
@@ -44,7 +44,7 @@ public class AuthProxyController {
                 1. Preencha `username` e `password`
                 2. Clique em **Execute**
                 3. Copie o valor `token` da resposta
-                4. Clique em **Authorize** (🔒) e informe: `Bearer <token>`
+                4. Clique em **Authorize** (??) e informe: `Bearer <token>`
 
                 **Credenciais de teste:**
                 - username: `admin` / password: `admin123` (ADMIN)
@@ -52,26 +52,27 @@ public class AuthProxyController {
                 """
     )
     public ResponseEntity<Object> login(@RequestBody AuthLoginRequest request) {
-        if (!StringUtils.hasText(authLambdaUrl)) {
-            log.warn("AUTH_LAMBDA_URL nao configurado — login proxy indisponivel");
+        if (!StringUtils.hasText(authServiceUrl)) {
+            log.warn("AUTH_SERVICE_URL nao configurado — login proxy indisponivel");
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("error", "AUTH_LAMBDA_URL nao configurado. Adicione o secret no K8s."));
+                    .body(Map.of("error", "AUTH_SERVICE_URL nao configurado. Adicione a configuracao do servico de autenticacao."));
         }
         try {
             ResponseEntity<Object> response = restTemplate.postForEntity(
-                    authLambdaUrl + "/auth/login",
+                    authServiceUrl + "/auth/login",
                     request,
                     Object.class
             );
             return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
         } catch (HttpStatusCodeException e) {
-            log.warn("Erro ao chamar auth lambda: {} {}", e.getStatusCode(), e.getMessage());
+            log.warn("Erro ao chamar auth service: {} {}", e.getStatusCode(), e.getMessage());
             return ResponseEntity.status(e.getStatusCode())
                     .body(e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("Erro inesperado ao chamar auth lambda", e);
+            log.error("Erro inesperado ao chamar auth service", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Erro ao conectar com o servico de autenticacao: " + e.getMessage()));
         }
     }
 }
+

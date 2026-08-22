@@ -18,5 +18,5 @@ RUN apk add --no-cache curl \
 WORKDIR /app
 COPY --from=build /app/application/target/video-processing-application-1.0.0-exec.jar app.jar
 COPY newrelic/newrelic.yml /app/newrelic/newrelic.yml
-EXPOSE 8084
+EXPOSE 8086
 ENTRYPOINT ["java", "-javaagent:/app/newrelic/newrelic.jar", "-Dnewrelic.config.file=/app/newrelic/newrelic.yml", "-jar", "app.jar"]

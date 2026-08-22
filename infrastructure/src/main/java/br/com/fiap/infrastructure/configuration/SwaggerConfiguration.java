@@ -15,19 +15,20 @@ import org.springframework.util.StringUtils;
 @Configuration
 public class SwaggerConfiguration {
 
-    @Value("${auth.lambda.url:}")
-    private String authLambdaUrl = "";
+    @Value("${auth.service.url:}")
+    private String authServiceUrl = "";
 
     @Bean
     public OpenAPI customOpenAPI() {
         java.util.List<Server> servers;
-        if (StringUtils.hasText(authLambdaUrl)) {
+        if (StringUtils.hasText(authServiceUrl)) {
             servers = java.util.List.of(
-                    new Server().url(authLambdaUrl + "/video-processing").description("AWS API Gateway (producao)")
+                    new Server().url(authServiceUrl + "/video-processing").description("Via gateway (auth service)"),
+                    new Server().url("/").description("Direct - http://localhost:8086")
             );
         } else {
             servers = java.util.List.of(
-                    new Server().url("/").description("Local — http://localhost:8084")
+                    new Server().url("/").description("Local - http://localhost:8086")
             );
         }
         return new OpenAPI()
@@ -37,7 +38,7 @@ public class SwaggerConfiguration {
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("JWT obtido via POST /auth/login. Informe: Bearer <token>")
+                                .description("JWT obtained via POST /auth/login. Use: Bearer <token>")
                         )
                 )
                 .addSecurityItem(new SecurityRequirement().addList("bearer-jwt"))
@@ -48,26 +49,30 @@ public class SwaggerConfiguration {
                                 FIAP - 14 SOAT - Arquitetura de Software (Turma Outubro de 2025)
                                 Tech Challenge - Fase 5 (Hackathon)
 
-                                Worker assíncrono — consome SQS video-uploaded, processa com ffmpeg,
-                                publica resultado em video-events.
+                                Async worker - consumes RabbitMQ video-uploaded, processes with ffmpeg,
+                                and publishes the result to video-events.
 
-                                **Como autenticar:**
-                                1. Expanda a secao **Authentication** abaixo
-                                2. Execute `POST /auth/login` com suas credenciais
-                                3. Copie o `token` da resposta
-                                4. Clique em **Authorize** (🔒) e informe: `Bearer <token>`
+                                Authentication:
+                                1. Expand the Authentication section below
+                                2. Execute POST /auth/login with your credentials
+                                3. Copy the token from the response
+                                4. Click Authorize and enter: Bearer <token>
                                 """));
     }
 
     @Bean
     public OpenApiCustomizer authLoginServerOverride() {
         return openApi -> {
-            if (!StringUtils.hasText(authLambdaUrl)) return;
-            if (openApi.getPaths() == null) return;
+            if (!StringUtils.hasText(authServiceUrl)) {
+                return;
+            }
+            if (openApi.getPaths() == null) {
+                return;
+            }
             var authPath = openApi.getPaths().get("/auth/login");
             if (authPath != null) {
                 authPath.servers(java.util.List.of(
-                        new Server().url(authLambdaUrl).description("Auth Lambda — API Gateway")
+                        new Server().url(authServiceUrl).description("Auth Service")
                 ));
             }
         };

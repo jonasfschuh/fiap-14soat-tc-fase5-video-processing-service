@@ -1,9 +1,15 @@
 spring:
   application:
     name: video-processing-service
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    virtual-host: ${RABBITMQ_VHOST:fiapx}
+    username: ${RABBITMQ_USER:fiapx}
+    password: ${RABBITMQ_PASSWORD:fiapx123}
 
 server:
-  port: ${SERVER_PORT:8084}
+  port: ${SERVER_PORT:8086}
 
 management:
   endpoints:
@@ -20,28 +26,13 @@ app:
   storage:
     type: ${STORAGE_TYPE:local}
     local:
-      path: ${STORAGE_LOCAL_PATH:./storage}
-      output-path: ${STORAGE_OUTPUT_PATH:./outputs}
-    s3:
-      bucket: ${S3_BUCKET:fiap-video-uploads}
+      path: ${STORAGE_LOCAL_PATH:/app/videos/uploads}
+      output-path: ${STORAGE_OUTPUT_PATH:/app/videos/processed}
   processing:
     ffmpeg:
       timeout-minutes: ${FFMPEG_TIMEOUT_MINUTES:10}
     jobs:
       max-history: ${JOBS_MAX_HISTORY:100}
-
-aws:
-  region: ${AWS_REGION:us-east-1}
-  access-key-id: ${AWS_ACCESS_KEY_ID:test}
-  secret-access-key: ${AWS_SECRET_ACCESS_KEY:test}
-  endpoint-override: ${AWS_ENDPOINT_OVERRIDE:}
-  sqs:
-    enabled: ${AWS_SQS_ENABLED:false}
-    polling:
-      fixed-delay-ms: ${AWS_SQS_POLLING_DELAY_MS:3000}
-    queues:
-      video-uploaded: ${SQS_QUEUE_VIDEO_UPLOADED:http://localhost:4566/000000000000/video-uploaded}
-      video-events: ${SQS_QUEUE_VIDEO_EVENTS:http://localhost:4566/000000000000/video-events}
 
 logging:
   level:
@@ -49,18 +40,20 @@ logging:
     org.springframework: WARN
 
 auth:
-  lambda:
-    url: ${AUTH_LAMBDA_URL:}
+  service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8090}
 
 ---
 spring:
   config:
     activate:
       on-profile: test
-
-aws:
-  sqs:
-    enabled: false
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: false
+      direct:
+        auto-startup: false
 
 app:
   storage:
@@ -74,8 +67,20 @@ spring:
   config:
     activate:
       on-profile: docker
+  rabbitmq:
+    host: ${RABBITMQ_HOST:fiap-rabbitmq}
 
-aws:
-  sqs:
-    enabled: ${AWS_SQS_ENABLED:true}
-  endpoint-override: ${AWS_ENDPOINT_OVERRIDE:http://fiap-localstack:4566}
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+app:
+  storage:
+    type: local
+    local:
+      # Caminho relativo ao projeto de upload — funciona em qualquer máquina
+      # desde que os dois projetos estejam na mesma pasta pai.
+      path: ../fiap-14soat-tc-fase5-video-upload-service/uploads
+      output-path: ../fiap-14soat-tc-fase5-video-upload-service/processed

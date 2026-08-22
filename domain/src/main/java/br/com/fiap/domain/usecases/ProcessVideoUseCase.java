@@ -11,6 +11,7 @@ import br.com.fiap.domain.ports.out.VideoProcessingEventPublisherPort;
 import br.com.fiap.domain.ports.out.VideoZipStoragePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -44,49 +45,84 @@ public class ProcessVideoUseCase implements ProcessVideoInputPort {
     public VideoJobResult execute(VideoUploadedEvent event) {
         UUID videoId = event.videoId();
         String userId = event.userId();
+        String filename = event.originalFilename();
         Path tempDir = null;
         Path videoFile = null;
+        long jobStart = System.currentTimeMillis();
 
-        log.info("[PROCESSING] Starting job for videoId={} userId={}", videoId, userId);
+        log.info("Iniciando processamento de \"{}\" | userId: {} | videoId: {}",
+                filename, userId, videoId);
 
         try {
             tempDir = Files.createTempDirectory("video-processing-" + videoId);
 
+            // ── Download ────────────────────────────────────────────────
+            MDC.put("processingStage", "DOWNLOADING");
+            long t0 = System.currentTimeMillis();
+            log.info("[1/4] Baixando \"{}\" do storage — chave: {}", filename, event.storageKey());
             videoFile = downloadPort.download(event.storageKey());
-            log.info("[PROCESSING] Downloaded video to {}", videoFile);
+            log.info("[1/4] Download concluído — \"{}\" ({})", filename, formatDuration(elapsed(t0)));
 
+            // ── Frame extraction ────────────────────────────────────────
+            MDC.put("processingStage", "EXTRACTING_FRAMES");
+            t0 = System.currentTimeMillis();
+            log.info("[2/4] Extraindo frames de \"{}\" via FFmpeg...", filename);
             Path framesDir = tempDir.resolve("frames");
             Files.createDirectories(framesDir);
             int frameCount = ffmpegPort.extractFrames(videoFile, framesDir);
-            log.info("[PROCESSING] Extracted {} frames for videoId={}", frameCount, videoId);
+            log.info("[2/4] Extração concluída — {} frames de \"{}\" ({})",
+                    frameCount, filename, formatDuration(elapsed(t0)));
 
+            // ── ZIP ─────────────────────────────────────────────────────
+            MDC.put("processingStage", "COMPRESSING");
+            t0 = System.currentTimeMillis();
+            log.info("[3/4] Compactando {} frames de \"{}\" em ZIP...", frameCount, filename);
             Path zipFile = tempDir.resolve("frames_" + videoId + ".zip");
             createZip(framesDir, zipFile);
+            log.info("[3/4] ZIP criado com sucesso — \"{}\" ({})", filename, formatDuration(elapsed(t0)));
 
+            // ── Store ───────────────────────────────────────────────────
+            MDC.put("processingStage", "STORING");
+            t0 = System.currentTimeMillis();
             String outputKey = "outputs/" + userId + "/" + videoId + "/frames.zip";
+            log.info("[4/4] Armazenando artefato de \"{}\" — destino: {}", filename, outputKey);
             String storedKey = zipStoragePort.store(outputKey, zipFile);
-            log.info("[PROCESSING] ZIP stored at {}", storedKey);
+            log.info("[4/4] Artefato armazenado — {} ({})", storedKey, formatDuration(elapsed(t0)));
 
+            // ── Publish ─────────────────────────────────────────────────
+            MDC.put("processingStage", "PUBLISHING");
             VideoJobResult result = VideoJobResult.builder(videoId, userId)
                     .outputKey(storedKey)
                     .frameCount(frameCount)
                     .status(VideoJobStatus.DONE)
                     .build();
-
             eventPublisher.publishProcessed(result);
-            log.info("[PROCESSING] Completed videoId={} frames={}", videoId, frameCount);
+
+            log.info("<<< \"{}\" processado com SUCESSO — frames: {} | duração total: {}",
+                    filename, frameCount, formatDuration(elapsed(jobStart)));
             return result;
+
         } catch (Exception ex) {
-            log.error("[PROCESSING] Failed videoId={} error={}", videoId, ex.getMessage(), ex);
+            log.error("<<< FALHA ao processar \"{}\" — erro: {} | duração: {}",
+                    filename, ex.getMessage(), formatDuration(elapsed(jobStart)), ex);
             eventPublisher.publishFailed(videoId, userId, ex.getMessage());
             return VideoJobResult.builder(videoId, userId)
                     .status(VideoJobStatus.FAILED)
                     .errorMessage(ex.getMessage())
                     .build();
         } finally {
+            MDC.remove("processingStage");
             cleanupPath(videoFile);
             cleanupDirectory(tempDir);
         }
+    }
+
+    private static long elapsed(long since) {
+        return System.currentTimeMillis() - since;
+    }
+
+    private static String formatDuration(long ms) {
+        return ms < 1000 ? ms + "ms" : String.format("%.1fs", ms / 1000.0);
     }
 
     private void createZip(Path framesDir, Path zipFile) {

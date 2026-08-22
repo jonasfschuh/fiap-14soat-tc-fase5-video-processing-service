@@ -8,8 +8,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class LocalFileZipStorageAdapterTest {
+
+    @Test
+    void shouldThrowVideoZipExceptionWhenSourceNotFound(@TempDir Path tempDir) {
+        LocalFileZipStorageAdapter adapter = new LocalFileZipStorageAdapter(tempDir.toString());
+        Path nonExistentZip = tempDir.resolve("nonexistent.zip");
+
+        assertThatThrownBy(() -> adapter.store("outputs/user/uuid/frames.zip", nonExistentZip))
+                .isInstanceOf(br.com.fiap.domain.exceptions.VideoZipException.class);
+    }
 
     @Test
     void shouldStoreZipAndReturnKey(@TempDir Path tempDir) throws IOException {
