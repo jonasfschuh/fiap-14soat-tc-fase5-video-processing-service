@@ -51,7 +51,7 @@ class RabbitMqConfigurationTest {
         assertThat(processedBinding.getRoutingKey()).isEqualTo(RabbitMqConfiguration.ROUTING_VIDEO_PROCESSED);
         assertThat(failedBinding.getRoutingKey()).isEqualTo(RabbitMqConfiguration.ROUTING_VIDEO_FAILED);
         assertThat(eventsDlqBinding.getRoutingKey()).isEqualTo(RabbitMqConfiguration.ROUTING_VIDEO_EVENTS_DLQ);
-        assertThat(config.videoProcessingEventPublisherPort(mock(RabbitTemplate.class), new ObjectMapper())).isNotNull();
+        assertThat(config.videoProcessingEventPublisherPort(mock(RabbitTemplate.class), new ObjectMapper(), "/tmp/processed", "/tmp/uploads")).isNotNull();
     }
 }
 

@@ -24,12 +24,13 @@ class RabbitVideoProcessingEventPublisherAdapterTest {
     void shouldPublishProcessedEvent() {
         RabbitTemplate rabbitTemplate = mock(RabbitTemplate.class);
         RabbitVideoProcessingEventPublisherAdapter adapter = new RabbitVideoProcessingEventPublisherAdapter(
-                rabbitTemplate, new ObjectMapper());
+                rabbitTemplate, new ObjectMapper(), "/tmp/processed", "/tmp/uploads");
 
         VideoJobResult result = VideoJobResult.builder(UUID.randomUUID(), "user-1")
                 .status(VideoJobStatus.DONE)
                 .frameCount(3)
                 .outputKey("outputs/user-1/video-1/frames.zip")
+                .storageKey("videos/user-1/video.mp4")
                 .build();
 
         adapter.publishProcessed(result);
@@ -48,7 +49,7 @@ class RabbitVideoProcessingEventPublisherAdapterTest {
     void shouldPublishFailedEvent() {
         RabbitTemplate rabbitTemplate = mock(RabbitTemplate.class);
         RabbitVideoProcessingEventPublisherAdapter adapter = new RabbitVideoProcessingEventPublisherAdapter(
-                rabbitTemplate, new ObjectMapper());
+                rabbitTemplate, new ObjectMapper(), "/tmp/processed", "/tmp/uploads");
 
         UUID videoId = UUID.randomUUID();
         adapter.publishFailed(videoId, "user-1", "boom");
@@ -70,7 +71,7 @@ class RabbitVideoProcessingEventPublisherAdapterTest {
                 .when(objectMapper).writeValueAsString(any());
 
         RabbitVideoProcessingEventPublisherAdapter adapter = new RabbitVideoProcessingEventPublisherAdapter(
-                rabbitTemplate, objectMapper);
+                rabbitTemplate, objectMapper, "/tmp/processed", "/tmp/uploads");
 
         assertThatThrownBy(() -> adapter.publishFailed(UUID.randomUUID(), "user-1", "error"))
                 .isInstanceOf(RuntimeException.class)
