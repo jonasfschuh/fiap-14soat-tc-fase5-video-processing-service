@@ -77,14 +77,15 @@ public class ProcessVideoUseCase implements ProcessVideoInputPort {
             MDC.put("processingStage", "COMPRESSING");
             t0 = System.currentTimeMillis();
             log.info("[3/4] Compactando {} frames de \"{}\" em ZIP...", frameCount, filename);
-            Path zipFile = tempDir.resolve("frames_" + videoId + ".zip");
+            String zipName = videoId + "_" + userId + "_frames.zip";
+            Path zipFile = tempDir.resolve(zipName);
             createZip(framesDir, zipFile);
             log.info("[3/4] ZIP criado com sucesso — \"{}\" ({})", filename, formatDuration(elapsed(t0)));
 
             // ── Store ───────────────────────────────────────────────────
             MDC.put("processingStage", "STORING");
             t0 = System.currentTimeMillis();
-            String outputKey = "outputs/" + userId + "/" + videoId + "/frames.zip";
+            String outputKey = "outputs/" + userId + "/" + videoId + "/" + zipName;
             log.info("[4/4] Armazenando artefato de \"{}\" — destino: {}", filename, outputKey);
             String storedKey = zipStoragePort.store(outputKey, zipFile);
             log.info("[4/4] Artefato armazenado — {} ({})", storedKey, formatDuration(elapsed(t0)));
