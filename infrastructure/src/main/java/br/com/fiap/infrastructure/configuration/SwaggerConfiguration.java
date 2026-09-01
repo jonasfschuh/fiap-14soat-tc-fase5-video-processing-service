@@ -6,7 +6,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springdoc.core.customizers.OpenApiCustomizer;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,8 +23,8 @@ public class SwaggerConfiguration {
         java.util.List<Server> servers;
         if (StringUtils.hasText(authServiceUrl)) {
             servers = java.util.List.of(
-                    new Server().url(authServiceUrl + "/video-processing").description("Via gateway (auth service)"),
-                    new Server().url("/").description("Direct - http://localhost:8086")
+                    new Server().url("/").description("Direct - http://localhost:8086"),
+                    new Server().url(authServiceUrl + "/video-processing").description("Via gateway (auth service)")
             );
         } else {
             servers = java.util.List.of(
@@ -60,21 +60,7 @@ public class SwaggerConfiguration {
                                 """));
     }
 
-    @Bean
-    public OpenApiCustomizer authLoginServerOverride() {
-        return openApi -> {
-            if (!StringUtils.hasText(authServiceUrl)) {
-                return;
-            }
-            if (openApi.getPaths() == null) {
-                return;
-            }
-            var authPath = openApi.getPaths().get("/auth/login");
-            if (authPath != null) {
-                authPath.servers(java.util.List.of(
-                        new Server().url(authServiceUrl).description("Auth Service")
-                ));
-            }
-        };
-    }
+    // NOTE: authLoginServerOverride was removed to prevent Swagger UI from sending
+    // requests directly to the auth service (cross-origin → CORS error).
+    // The /auth/login endpoint is proxied via AuthProxyController on this service.
 }

@@ -32,6 +32,7 @@
 - [🔌 API — Swagger e Endpoints](#-api--swagger-e-endpoints)
 - [🧪 Testes](#-testes)
 - [🔗 Repositórios Relacionados](#-repositórios-relacionados)
+- [⚠️ Troubleshooting](#️-troubleshooting)
 
 ---
 
@@ -454,6 +455,41 @@ start report-aggregate/target/site/jacoco-aggregate/index.html
 | 6 | [fiap-14soat-tc-fase5-video-download-service](https://github.com/jonasfschuh/fiap-14soat-tc-fase5-video-download-service) | Download do ZIP via presigned URL |
 | 7 | [fiap-14soat-tc-fase5-notification-service](https://github.com/jonasfschuh/fiap-14soat-tc-fase5-notification-service) | Notificação por e-mail em caso de erro/conclusão |
 | 8 | [fiap-14soat-tc-fase5-observability](https://github.com/jonasfschuh/fiap-14soat-tc-fase5-observability) | Prometheus + Grafana — dashboards e alertas |
+
+---
+
+## ⚠️ Troubleshooting
+
+### `/actuator/prometheus` retorna HTTP 500
+
+**Sintoma:** o endpoint `/actuator/prometheus` está exposto no `application.yml` mas responde com `500 Internal Server Error`.
+
+**Causa raiz:** a dependência `micrometer-registry-prometheus` estava ausente. O `spring-boot-starter-actuator` expõe o endpoint `/actuator/prometheus`, mas sem o registry do Micrometer para Prometheus não há implementação para servir as métricas — resultando em 500.
+
+**Solução:** adicionar a dependência no módulo `application/pom.xml`:
+
+```xml
+<dependency>
+    <groupId>io.micrometer</groupId>
+    <artifactId>micrometer-registry-prometheus</artifactId>
+</dependency>
+```
+
+---
+
+### Swagger UI — `POST /auth/login` falha com CORS / "Failed to fetch"
+
+**Sintoma:** ao clicar em **Execute** no Swagger UI para `POST /auth/login`, o browser exibe:
+
+```
+Failed to fetch.
+Possible Reasons: CORS / Network Failure
+URL scheme must be "http" or "https" for CORS request.
+```
+
+**Causa raiz:** o `SwaggerConfiguration` sobrescrevia o servidor do path `/auth/login` apontando diretamente para `http://localhost:8090` (o auth service). Isso fazia o browser enviar uma requisição *cross-origin* (de `localhost:8086` para `localhost:8090`), violando a política de CORS.
+
+**Solução:** remover o override de servidor para `/auth/login`. O endpoint já é disponibilizado como proxy pelo `AuthProxyController` neste próprio serviço (`POST localhost:8086/auth/login`), eliminando completamente o problema de CORS.
 
 ---
 
