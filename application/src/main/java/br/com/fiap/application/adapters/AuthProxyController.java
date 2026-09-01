@@ -58,8 +58,12 @@ public class AuthProxyController {
                     .body(Map.of("error", "AUTH_SERVICE_URL nao configurado. Adicione a configuracao do servico de autenticacao."));
         }
         try {
+            // Chamada direta ao Service interno do K8s (nao passa pelo ingress),
+            // entao usa o path sem o prefixo /auth: o AuthController do
+            // auth-service mapeia apenas /login (o rewrite do ingress ja
+            // remove o prefixo antes de chegar no pod).
             ResponseEntity<Object> response = restTemplate.postForEntity(
-                    authServiceUrl + "/auth/login",
+                    authServiceUrl + "/login",
                     request,
                     Object.class
             );

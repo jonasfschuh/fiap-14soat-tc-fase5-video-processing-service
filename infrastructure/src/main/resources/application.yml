@@ -84,3 +84,21 @@ app:
       # desde que os dois projetos estejam na mesma pasta pai.
       path: ../fiap-14soat-tc-fase5-video-upload-service/uploads
       output-path: ../fiap-14soat-tc-fase5-video-upload-service/processed
+
+---
+spring:
+  config:
+    activate:
+      on-profile: k8s
+
+# O ingress reescreve /processing(/|$)(.*) -> /$2, entao o app recebe as
+# requisicoes sem o prefixo /processing. O Swagger UI roda no browser e
+# precisa dos paths completos (com prefixo) para que o ingress roteie
+# corretamente as chamadas de api-docs/config feitas pelo JS da pagina.
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    config-url: /processing/v3/api-docs/swagger-config
+    url: /processing/v3/api-docs
+

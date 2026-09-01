@@ -1,0 +1,9 @@
+# Forca LF em scripts shell para evitar corrupcao de shebang em checkouts
+# feitos por runners Windows (self-hosted), que quebraria "./mvnw: not found"
+# durante o build multi-stage do Docker.
+mvnw text eol=lf
+*.sh text eol=lf
+
+# Scripts batch/PowerShell devem permanecer CRLF (nativo do Windows).
+mvnw.cmd text eol=crlf
+*.bat text eol=crlf

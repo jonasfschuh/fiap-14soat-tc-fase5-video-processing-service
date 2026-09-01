@@ -14,6 +14,11 @@ spec:
     metadata:
       labels:
         app: video-processing-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8086"
+        prometheus.io/scheme: "http"
     spec:
       containers:
         - name: video-processing-api
@@ -21,9 +26,13 @@ spec:
           imagePullPolicy: Never
           ports:
             - containerPort: 8086
+              name: http
+              protocol: TCP
           env:
             - name: SERVER_PORT
               value: "8086"
+            - name: SPRING_PROFILES_ACTIVE
+              value: "k8s"
             - name: STORAGE_TYPE
               value: local
             - name: STORAGE_LOCAL_PATH
@@ -63,6 +72,40 @@ spec:
           volumeMounts:
             - name: video-storage
               mountPath: /app/videos
+
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8086
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8086
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8086
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
       volumes:
         - name: video-storage
           persistentVolumeClaim:

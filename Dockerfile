@@ -1,8 +1,9 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 COPY . .
-RUN chmod +x mvnw
-RUN ./mvnw clean package -DskipTests
+# Usa "sh mvnw" em vez de "./mvnw": evita depender do shebang/bit executavel
+# do wrapper, que pode ser corrompido (CRLF) em checkouts de runners Windows.
+RUN sh mvnw clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 
