@@ -43,6 +43,10 @@ auth:
   service:
     url: ${AUTH_SERVICE_URL:http://localhost:8090}
 
+swagger:
+  server:
+    url: ${SWAGGER_SERVER_URL:/}
+
 ---
 spring:
   config:

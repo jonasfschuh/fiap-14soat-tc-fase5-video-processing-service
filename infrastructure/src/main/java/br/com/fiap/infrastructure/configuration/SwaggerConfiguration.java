@@ -15,24 +15,20 @@ import org.springframework.util.StringUtils;
 @Configuration
 public class SwaggerConfiguration {
 
-    @Value("${auth.service.url:}")
-    private String authServiceUrl = "";
+    /**
+     * Explicit server URL shown in Swagger UI (e.g. http://localhost/processing for K8s ingress).
+     * Defaults to "/" (relative) so Swagger calls go to the same host/port it was opened from.
+     */
+    @Value("${swagger.server.url:/}")
+    private String swaggerServerUrl;
 
     @Bean
     public OpenAPI customOpenAPI() {
-        java.util.List<Server> servers;
-        if (StringUtils.hasText(authServiceUrl)) {
-            servers = java.util.List.of(
-                    new Server().url("/").description("Direct - http://localhost:8086"),
-                    new Server().url(authServiceUrl + "/video-processing").description("Via gateway (auth service)")
-            );
-        } else {
-            servers = java.util.List.of(
-                    new Server().url("/").description("Local - http://localhost:8086")
-            );
-        }
+        String serverUrl = StringUtils.hasText(swaggerServerUrl) ? swaggerServerUrl : "/";
         return new OpenAPI()
-                .servers(servers)
+                .servers(java.util.List.of(
+                        new Server().url(serverUrl).description("API Server")
+                ))
                 .components(new Components()
                         .addSecuritySchemes("bearer-jwt", new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)
