@@ -71,6 +71,12 @@ spec:
                 secretKeyRef:
                   name: rabbitmq-secret
                   key: RABBITMQ_PASSWORD
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: newrelic-secret
+                  key: NEW_RELIC_LICENSE_KEY
+                  optional: true
           volumeMounts:
             - name: video-storage
               mountPath: /app/videos
