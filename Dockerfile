@@ -22,4 +22,11 @@ WORKDIR /app
 COPY --from=build /app/application/target/video-processing-application-1.0.0-exec.jar app.jar
 COPY newrelic/newrelic.yml /app/newrelic/newrelic.yml
 EXPOSE 8086
-ENTRYPOINT ["java", "-javaagent:/app/newrelic/newrelic.jar", "-Dnewrelic.config.file=/app/newrelic/newrelic.yml", "-jar", "app.jar"]
+# O agente New Relic só é anexado se NEW_RELIC_LICENSE_KEY estiver definida,
+# evitando overhead de memória quando a chave não está presente.
+ENTRYPOINT ["sh", "-c", "\
+  if [ -n \"$NEW_RELIC_LICENSE_KEY\" ]; then \
+    exec java -javaagent:/app/newrelic/newrelic.jar -Dnewrelic.config.file=/app/newrelic/newrelic.yml -jar app.jar; \
+  else \
+    exec java -jar app.jar; \
+  fi"]

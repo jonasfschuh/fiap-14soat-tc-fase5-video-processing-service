@@ -6,7 +6,7 @@ metadata:
   labels:
     app: video-processing-api
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: video-processing-api
@@ -83,11 +83,11 @@ spec:
 
           resources:
             requests:
-              memory: "512Mi"
-              cpu: "100m"
-            limits:
               memory: "1Gi"
-              cpu: "500m"
+              cpu: "300m"
+            limits:
+              memory: "2Gi"
+              cpu: "1500m"
 
           startupProbe:
             httpGet:
